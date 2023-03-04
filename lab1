@@ -1,0 +1,41 @@
+#!/bin/bash
+
+FILE=text.txt
+
+if test -f "$FILE"; then
+    echo "$FILE существует"
+fi
+
+
+echo "step 1" 
+IFS=$'\n'
+
+for var in $(cat $FILE)
+
+do
+
+echo " $var" $'\n' $'\n'
+
+done
+
+
+echo "step 2" 
+for var in $(cat $FILE)
+
+do
+
+echo " $var" $'\n' $'\n' $'\n'
+
+done
+
+
+echo "step 3" 
+for var in $(cat $FILE)
+
+do
+
+echo " $var"
+
+done
+
+полезный сайтик https://coollib.net/b/390087-bash-skriptyi-rukovodstvo-v-11-chastyah/read
