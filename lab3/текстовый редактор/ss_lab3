@@ -1,0 +1,250 @@
+#include <Windows.h>
+#include "resource1.h"
+#include "Soft.h"
+
+
+
+int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevinst, LPSTR args, int nomdshow)
+{
+	WNDCLASS SoftwareMainClass = NewWindowClass((HBRUSH)COLOR_WINDOW, LoadCursor(NULL, IDC_ARROW), hInst, LoadIcon(hInst, MAKEINTRESOURCE(IDI_ICON1)),
+		L"MainWndClass", SoftwareMainProcedure);
+
+	if (!RegisterClassW(&SoftwareMainClass)) { return -1; }
+
+	MSG SoftwareMainMessage = { 0 };
+
+	CreateWindow(L"MainWndClass", L"Текстовый редактор", WS_OVERLAPPEDWINDOW | WS_VISIBLE, 100, 100, 500, 250, NULL, NULL, NULL, NULL);
+	while (GetMessage(&SoftwareMainMessage, NULL, NULL, NULL))
+	{
+		TranslateMessage(&SoftwareMainMessage);
+		DispatchMessage(&SoftwareMainMessage);
+	}
+	return 0;
+
+}
+
+WNDCLASS NewWindowClass(HBRUSH BGColor, HCURSOR Cursor, HINSTANCE hInst, HICON Icon, LPCWSTR Name, WNDPROC Procedure)
+{
+	WNDCLASS NWC = { 0 };
+
+	NWC.hIcon = Icon;
+	NWC.hCursor = Cursor;
+	NWC.hInstance = hInst;
+	NWC.lpszClassName = Name;
+	NWC.hbrBackground = BGColor;
+	NWC.lpfnWndProc = Procedure;
+	
+	return NWC;
+}
+LRESULT CALLBACK SoftwareMainProcedure(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
+{
+	switch (msg)
+	{
+	case WM_COMMAND:
+		switch (wp)
+		{
+		case OnOpenFile: {
+			SetWindowTextA(hEditControl, "");
+			if (GetSaveFileNameA(&ofn)) { LoadData(filename);
+			}
+			break; }
+
+		case OnSaveFile: {
+			SaveData(filename);
+			break; }
+
+		case OnSaveFileAs: {
+			if (GetSaveFileNameA(&ofn)) { SaveData(filename); }
+			break; }
+
+		case OnExitSoftware:{
+			PostQuitMessage(0);
+			break; }
+
+		case OnCopying: {
+			EditCopy(hWnd);
+			SetWindowTextA(hEditControl, Buffer);
+			break; }
+
+		case OnInserting: {
+			MessageBoxA(hWnd, " Вставить ", "Menu 6", MB_OK);
+			break; }
+
+		case OnCutting: {
+			MessageBoxA(hWnd, " Вырезать ", "Menu 7", MB_OK);
+			break; }
+
+		case Properties: {
+			MessageBoxA(hWnd, " Инфа ", "Menu 8", MB_OK);
+			break; }
+
+
+		default: break;
+		}
+		break;
+
+	case WM_CREATE:
+		MainWndAddMenus(hWnd);
+		MainWndAddWidgets(hWnd);
+		SetOpenFileParams(hWnd);
+		break;
+	case WM_DESTROY:
+		PostQuitMessage(0);
+		break;
+	default: return DefWindowProc(hWnd, msg, wp, lp);
+	}
+}
+
+void MainWndAddMenus(HWND hWnd)
+{
+	HMENU RootMenu = CreateMenu();
+	HMENU SubMenu1 = CreateMenu();
+	HMENU SubMenu2 = CreateMenu();
+	HMENU SubMenu3 = CreateMenu();
+
+	//1 Меню
+	AppendMenu(SubMenu1, MF_STRING, OnOpenFile, L"Открыть...");//Создание подменю
+	AppendMenu(SubMenu1, MF_STRING, OnSaveFile, L"Сохранить");
+	AppendMenu(SubMenu1, MF_STRING, OnSaveFileAs, L"Сохранить как...");
+	AppendMenu(SubMenu1, MF_SEPARATOR, NULL, NULL);
+	AppendMenu(SubMenu1, MF_STRING, OnExitSoftware, L"Выход");
+
+	AppendMenu(RootMenu, MF_POPUP, (UINT_PTR)SubMenu1, L"Файл");//Создание меню
+
+	//2 Меню
+	AppendMenu(SubMenu2, MF_STRING, OnCopying, L"Копировать");
+	AppendMenu(SubMenu2, MF_STRING, OnInserting, L"Вставить");
+	AppendMenu(SubMenu2, MF_STRING, OnCutting, L"Вырезать");
+
+	AppendMenu(RootMenu, MF_POPUP, (UINT_PTR)SubMenu2, L"Правка");
+
+	//3 Меню
+	AppendMenu(SubMenu3, MF_STRING, Properties, L"О программе");
+
+	AppendMenu(RootMenu, MF_POPUP, (UINT_PTR)SubMenu3, L"Справка");
+
+	SetMenu(hWnd, RootMenu);
+
+}
+
+void MainWndAddWidgets(HWND hWnd) 
+{
+	hEditControl = CreateWindowA("edit","", WS_VISIBLE | WS_CHILD | ES_MULTILINE | WS_VSCROLL, 5, 2, 480, 180, hWnd, NULL, NULL, NULL);
+}
+
+void SaveData(LPCSTR path)
+{
+	HANDLE FileToSave = CreateFileA(
+		path,
+		GENERIC_WRITE,
+		0,
+		NULL,
+		CREATE_ALWAYS,
+		FILE_ATTRIBUTE_NORMAL,
+		NULL);
+	int saveLenth = GetWindowTextLength(hEditControl) + 1;
+	char* data = new char[saveLenth];
+
+	saveLenth = GetWindowTextA(hEditControl, data, saveLenth);
+
+	DWORD bytesIterated;
+	WriteFile(FileToSave, data, saveLenth, &bytesIterated, NULL);
+
+	CloseHandle(FileToSave);
+	delete[] data;
+
+}
+
+void LoadData(LPCSTR path)
+{
+	HANDLE FileToLoad = CreateFileA(
+		path,
+		GENERIC_READ,
+		0,
+		NULL,
+		OPEN_EXISTING,
+		FILE_ATTRIBUTE_NORMAL,
+		NULL);
+
+	DWORD bytesIterated;
+	ReadFile(FileToLoad, Buffer, TextBufferSize, &bytesIterated, NULL);
+
+	SetWindowTextA(hEditControl, Buffer);
+
+	CloseHandle(FileToLoad);
+}
+
+void SetOpenFileParams(HWND hWnd){
+
+	ZeroMemory(&ofn, sizeof(ofn));
+	ofn.lStructSize = sizeof(ofn);
+	ofn.hwndOwner = hWnd;
+	ofn.lpstrFile = filename;
+	ofn.nMaxFile = sizeof(filename);
+	ofn.lpstrFilter = "*.txt";
+	ofn.lpstrFileTitle = NULL;
+	ofn.nMaxFileTitle = 0;
+	ofn.lpstrInitialDir = "C:/s";
+	ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
+}
+
+//void EditCopy(HWND hWnd) {
+//	// Получаем дескриптор окна
+//	hEdit = GetDlgItem(hWnd, NULL);
+//
+//	// Получаем позицию курсора и выделения
+//	dwPos = SendMessage(hEdit, EM_GETSEL, 0, 0);
+//
+//	// Разбиваем результат на позицию курсора и выделения
+//	int iStart = LOWORD(dwPos); // начало выделения
+//	int iEnd = HIWORD(dwPos); // конец выделения (если есть)
+//}
+
+void EditCopy(HWND hwnd)
+{
+	// Получаем описатель окна редактирования
+	HWND hEdit = GetDlgItem(hwnd, NULL);
+
+	// Создаем переменные для хранения начального и конечного индексов выделения
+	DWORD dwStart, dwEnd;
+
+	// Вызываем сообщение EM_GETSEL для получения начального и конечного индексов выделения
+	SendMessage(hEdit, EM_GETSEL, reinterpret_cast<WPARAM>(&dwStart), reinterpret_cast<WPARAM>(&dwEnd));
+
+	// Если начальный и конечный индексы равны, значит нет выделенного текста
+	if (dwStart == dwEnd)
+	{
+		MessageBox(hwnd, TEXT("No text selected"), TEXT("Error"), MB_OK | MB_ICONERROR);
+		return;
+	}
+
+	// Вычисляем длину выделенного текста
+	const int iLen = dwEnd - dwStart;
+
+	// Создаем буфер для хранения выделенного текста
+	WCHAR* pBuffer = new WCHAR[iLen + 1];
+
+	// Вызываем сообщение EM_GETSELTEXT для копирования выделенного текста в буфер
+	SendMessage(hEdit, EM_GETSELTEXT, 0, reinterpret_cast<LPARAM>(pBuffer));
+
+	// Копируем выделенный текст в буфер обмена
+	if (OpenClipboard(hwnd))
+	{
+		EmptyClipboard();
+		HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, (iLen + 1) * sizeof(WCHAR));
+		if (hMem)
+		{
+			WCHAR* pMem = reinterpret_cast<WCHAR*>(GlobalLock(hMem));
+			if (pMem)
+			{
+				lstrcpyW(pMem, pBuffer);
+				GlobalUnlock(hMem);
+				SetClipboardData(CF_UNICODETEXT, hMem);
+			}
+		}
+		CloseClipboard();
+	}
+
+	// Освобождаем память, выделенную для буфера
+	delete[] pBuffer;
+}
